@@ -1,0 +1,14 @@
+---
+# kubernetes-deployment.yaml
+# Ansible playbook for Kubernetes deployment
+
+- name: Deploy application to Kubernetes
+  hosts: kube_control_plane
+  become: false
+  gather_facts: false
+  
+  vars_files:
+    - roles/kubernetes/vars/main.yml
+  
+  roles:
+    - kubernetes 

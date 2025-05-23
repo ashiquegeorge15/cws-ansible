@@ -1,0 +1,42 @@
+---
+# Test kubectl functionality
+- name: Test kubectl
+  hosts: localhost
+  gather_facts: false
+  
+  tasks:
+    - name: Check kubectl version
+      command: kubectl version --client
+      register: kubectl_version
+      changed_when: false
+      
+    - name: Display kubectl version
+      debug:
+        var: kubectl_version.stdout_lines
+        
+    - name: Check kubectl config
+      command: kubectl config view
+      register: kubectl_config
+      changed_when: false
+      
+    - name: Display kubectl config
+      debug:
+        var: kubectl_config.stdout_lines
+        
+    - name: Check kubectl cluster info
+      command: kubectl cluster-info
+      register: kubectl_cluster
+      changed_when: false
+      
+    - name: Display kubectl cluster info
+      debug:
+        var: kubectl_cluster.stdout_lines
+        
+    - name: Get minikube IP
+      shell: minikube ip
+      register: minikube_ip
+      changed_when: false
+      
+    - name: Display minikube IP
+      debug:
+        var: minikube_ip.stdout 

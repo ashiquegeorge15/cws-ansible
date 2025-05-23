@@ -1,0 +1,24 @@
+---
+# Variables for Kubernetes deployment
+
+# Application details
+application_name: sample-app
+application_image: nginx:latest
+application_replicas: 2
+application_port: 80
+
+# Kubernetes settings
+kubernetes_namespace: default
+kubernetes_resource_limits:
+  cpu: "500m"
+  memory: "512Mi"
+kubernetes_resource_requests:
+  cpu: "100m"
+  memory: "128Mi"
+
+# Application environment variables
+app_environment:
+  - name: ENV
+    value: production
+  - name: LOG_LEVEL
+    value: info 

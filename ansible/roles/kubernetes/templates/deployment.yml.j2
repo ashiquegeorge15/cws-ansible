@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ application_name }}
+  labels:
+    app: {{ application_name }}
+spec:
+  replicas: {{ application_replicas }}
+  selector:
+    matchLabels:
+      app: {{ application_name }}
+  template:
+    metadata:
+      labels:
+        app: {{ application_name }}
+    spec:
+      containers:
+      - name: {{ application_name }}
+        image: {{ application_image }}
+        ports:
+        - containerPort: {{ application_port }}
+        resources:
+          limits:
+            cpu: {{ kubernetes_resource_limits.cpu }}
+            memory: {{ kubernetes_resource_limits.memory }}
+          requests:
+            cpu: {{ kubernetes_resource_requests.cpu }}
+            memory: {{ kubernetes_resource_requests.memory }}
+        env:
+{% for env_var in app_environment %}
+        - name: {{ env_var.name }}
+          value: "{{ env_var.value }}"
+{% endfor %}
+        livenessProbe:
+          httpGet:
+            path: /
+            port: {{ application_port }}
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: {{ application_port }}
+          initialDelaySeconds: 5
+          periodSeconds: 5 

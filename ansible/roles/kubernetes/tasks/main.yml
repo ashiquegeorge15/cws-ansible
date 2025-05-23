@@ -1,0 +1,55 @@
+---
+# Tasks for Kubernetes deployment
+
+- name: Check if kubectl is available
+  command: kubectl version --client
+  register: kubectl_check
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Fail if kubectl is not installed
+  fail:
+    msg: "kubectl is not installed. Please install kubectl first."
+  when: kubectl_check.rc != 0
+
+- name: Get minikube IP
+  shell: minikube ip
+  register: minikube_ip
+  changed_when: false
+
+- name: Get minikube API server URL
+  shell: kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}'
+  register: k8s_server
+  changed_when: false
+
+- name: Create directory for generated manifests
+  file:
+    path: "{{ playbook_dir }}/generated"
+    state: directory
+    mode: '0755'
+
+- name: Copy Kubernetes deployment file
+  template:
+    src: deployment.yml.j2
+    dest: "{{ playbook_dir }}/generated/{{ application_name }}-deployment.yml"
+  register: deployment_template
+
+- name: Copy Kubernetes service file
+  template:
+    src: service.yml.j2
+    dest: "{{ playbook_dir }}/generated/{{ application_name }}-service.yml"
+  register: service_template
+  
+- name: Deploy application to Kubernetes
+  command: kubectl apply -f {{ playbook_dir }}/generated/{{ application_name }}-deployment.yml -n {{ kubernetes_namespace }} --validate=false
+  register: deploy_result
+
+- name: Deploy service to Kubernetes
+  command: kubectl apply -f {{ playbook_dir }}/generated/{{ application_name }}-service.yml -n {{ kubernetes_namespace }} --validate=false
+  register: service_result
+
+- name: Wait for deployment to complete
+  command: kubectl rollout status deployment/{{ application_name }} -n {{ kubernetes_namespace }}
+  when: deploy_result.rc == 0
+  changed_when: false 

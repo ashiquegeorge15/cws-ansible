@@ -1,0 +1,131 @@
+---
+- name: Deploy Portfolio Website to Kubernetes
+  hosts: k8s_cluster
+  become: yes
+  become_method: sudo
+  become_user: root
+  vars:
+    app_name: portfolio-website
+    image_name: portfolio-website
+    image_tag: latest
+    replicas: 1
+    k8s_namespace: default
+    container_port: 80
+    service_port: 80
+    kubeconfig: "{{ lookup('env', 'HOME') }}/.kube/config"
+
+  tasks:
+    - name: Ensure namespace exists
+      kubernetes.core.k8s:
+        name: "{{ k8s_namespace }}"
+        api_version: v1
+        kind: Namespace
+        state: present
+        kubeconfig: "{{ kubeconfig }}"
+
+    - name: Verify Docker image exists
+      shell: "docker images | grep {{ image_name }}"
+      register: image_check
+      changed_when: false
+      failed_when: image_check.rc != 0
+
+    - name: Display image check
+      debug:
+        var: image_check.stdout_lines
+
+    - name: Deploy Kubernetes Deployment
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: "{{ app_name }}"
+            namespace: "{{ k8s_namespace }}"
+            labels:
+              app: "{{ app_name }}"
+          spec:
+            replicas: "{{ replicas }}"
+            selector:
+              matchLabels:
+                app: "{{ app_name }}"
+            template:
+              metadata:
+                labels:
+                  app: "{{ app_name }}"
+              spec:
+                containers:
+                - name: "{{ app_name }}"
+                  image: "{{ image_name }}:{{ image_tag }}"
+                  imagePullPolicy: Never
+                  ports:
+                  - containerPort: "{{ container_port }}"
+                  resources:
+                    limits:
+                      cpu: "0.5"
+                      memory: "512Mi"
+                    requests:
+                      cpu: "0.2"
+                      memory: "256Mi"
+        kubeconfig: "{{ kubeconfig }}"
+
+    - name: Deploy Kubernetes Service
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: "{{ app_name }}"
+            namespace: "{{ k8s_namespace }}"
+          spec:
+            selector:
+              app: "{{ app_name }}"
+            ports:
+            - protocol: TCP
+              port: "{{ service_port }}"
+              targetPort: "{{ container_port }}"
+            type: ClusterIP
+        kubeconfig: "{{ kubeconfig }}"
+
+    - name: Get pod status
+      shell: "kubectl --kubeconfig={{ kubeconfig }} get pods -n {{ k8s_namespace }} -l app={{ app_name }} -o wide"
+      register: pod_status
+      changed_when: false
+      retries: 30
+      delay: 10
+      until: pod_status.rc == 0
+
+    - name: Display pod status
+      debug:
+        var: pod_status.stdout_lines
+
+    - name: Wait for pods to be ready
+      shell: "kubectl --kubeconfig={{ kubeconfig }} get pods -n {{ k8s_namespace }} -l app={{ app_name }} -o jsonpath='{.items[*].status.containerStatuses[*].ready}'"
+      register: pod_ready
+      changed_when: false
+      retries: 30
+      delay: 10
+      until: pod_ready.stdout == "true"
+
+    - name: Get pod details
+      shell: "kubectl --kubeconfig={{ kubeconfig }} describe pods -n {{ k8s_namespace }} -l app={{ app_name }}"
+      register: pod_details
+      changed_when: false
+
+    - name: Display pod details
+      debug:
+        var: pod_details.stdout_lines
+
+    - name: Get pod logs
+      shell: "kubectl --kubeconfig={{ kubeconfig }} logs -n {{ k8s_namespace }} -l app={{ app_name }}"
+      register: pod_logs
+      changed_when: false
+
+    - name: Display pod logs
+      debug:
+        var: pod_logs.stdout_lines
+
+    - name: Display final pod status
+      debug:
+        var: pod_ready.stdout 

@@ -139,39 +139,3 @@ resources:
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-# 1. Navigate to your project directory
-cd /mnt/c/Users/ashiq/OneDrive/Desktop/cws
-
-# 2. Activate the Python virtual environment
-source ansible-venv/bin/activate
-
-# 3. Start Minikube (if not already running)
-minikube start
-
-# 4. Configure Docker to use Minikube's Docker daemon
-eval $(minikube docker-env)
-
-# 5. Build the Docker image
-cd portfolio-website
-docker build -t portfolio-website:latest .
-
-# 6. Verify the image was built
-docker images | grep portfolio-website
-
-# 7. Navigate to the Ansible directory
-cd ../ansible
-
-# 8. Run the Ansible playbook
-ansible-playbook -i inventory.ini k8s-deploy.yml -K
-
-# 9. Verify the deployment
-kubectl get pods
-kubectl get services
-
-# 10. Access the website (choose one method):
-# Method 1: Port forwarding
-kubectl port-forward service/portfolio-website 8080:80
-# Then access http://localhost:8080 in your browser
-
-# OR Method 2: Using Minikube service
-minikube service portfolio-website
